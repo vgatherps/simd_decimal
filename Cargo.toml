@@ -6,3 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+
+[dev-dependencies]
+criterion = "0.3"
+rust_decimal = "1.27"
+
+[[bench]]
+name = "bench_raw_convert"
+harness = false

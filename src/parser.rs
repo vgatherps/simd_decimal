@@ -1,12 +1,12 @@
 use std::arch::x86_64::{
-    __m128i, _mm_and_si128, _mm_cmpeq_epi8, _mm_cmpgt_epi8, _mm_cmplt_epi8, _mm_cvtsi128_si64,
-    _mm_insert_epi8, _mm_madd_epi16, _mm_maddubs_epi16, _mm_movemask_epi8, _mm_packs_epi32,
-    _mm_set1_epi8, _mm_setr_epi16, _mm_setr_epi8, _mm_shuffle_epi8, _mm_sub_epi8,
-    _mm_test_all_ones, _mm_tzcnt_32,
+    _mm_and_si128, _mm_cmpeq_epi8, _mm_cmpgt_epi8, _mm_cmplt_epi8, _mm_cvtsi128_si64,
+    _mm_madd_epi16, _mm_maddubs_epi16, _mm_movemask_epi8, _mm_packs_epi32, _mm_set1_epi8,
+    _mm_setr_epi16, _mm_setr_epi8, _mm_shuffle_epi8, _mm_sub_epi8, _mm_test_all_ones, _mm_tzcnt_32,
 };
 
 use crate::tables::{DOT_SHUFFLE_CONTROL, LENGTH_SHIFT_CONTROL};
 
+#[derive(Clone, Copy, Debug)]
 pub struct ParseInput<'a> {
     pub data: &'a [u8; 16],
     pub real_length: usize,
@@ -20,6 +20,9 @@ pub struct ParseOutput {
 
 /// Parses the inputs passed into (mantissa, exponent) pairs.
 /// If any of them detected invalid, returns false
+/// # Safety
+///
+/// It is unsafe to pass anything with a real_length that is greater than 16
 pub unsafe fn do_parse_many_decimals<const N: usize>(
     inputs: &[ParseInput; N],
     outputs: &mut [ParseOutput; N],
@@ -161,21 +164,11 @@ pub unsafe fn do_parse_many_decimals<const N: usize>(
 }
 
 #[cfg(test)]
-pub mod test {
-    pub unsafe fn transmute_char(v: __m128i) -> [u8; 16] {
-        std::mem::transmute(v)
-    }
+mod test {
 
-    pub unsafe fn transmute_short(v: __m128i) -> [u16; 8] {
-        std::mem::transmute(v)
-    }
-
-    pub unsafe fn transmute_word(v: __m128i) -> [u32; 4] {
-        std::mem::transmute(v)
-    }
     use super::*;
     #[test]
-    fn test_a_big_number() {
+    fn test_a_big_decimal() {
         let data = b"987654321.123_..";
         let real_length = 13;
         let input = ParseInput { data, real_length };
@@ -188,6 +181,25 @@ pub mod test {
             output[0],
             ParseOutput {
                 exponent: 3,
+                mantissa: 987654321123
+            }
+        );
+    }
+
+    #[test]
+    fn test_a_big_integer() {
+        let data = b"987654321123_..9";
+        let real_length = 12;
+        let input = ParseInput { data, real_length };
+        let mut output = [ParseOutput::default()];
+
+        let was_good = unsafe { do_parse_many_decimals::<1>(&[input], &mut output) };
+
+        assert!(was_good);
+        assert_eq!(
+            output[0],
+            ParseOutput {
+                exponent: 0,
                 mantissa: 987654321123
             }
         );

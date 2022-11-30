@@ -29,7 +29,7 @@ const fn generate_dot_for(dot: u8) -> [u8; 16] {
     let mut data = [0u8; 16];
     let mut i = 0;
     while i < 16 {
-        if i > dot {
+        if i > dot || dot >= 16 {
             data[i as usize] = i;
         } else if i > 0 {
             data[i as usize] = i - 1;
@@ -45,7 +45,7 @@ const fn generate_dot_for(dot: u8) -> [u8; 16] {
 const fn generate_dot_shuffle_control() -> [[u8; 16]; 33] {
     let mut data = [[0; 16]; 33];
     let mut i = 0;
-    while i < 32 {
+    while i <= 32 {
         data[i as usize] = generate_dot_for(i);
         i += 1;
     }
