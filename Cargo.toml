@@ -9,7 +9,7 @@ edition = "2021"
 
 [dev-dependencies]
 criterion = "0.3"
-rust_decimal = "1.27"
+rust_decimal = {path = "submodules/rust-decimal"}
 
 [[bench]]
 name = "bench_raw_convert"

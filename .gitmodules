@@ -1,0 +1,3 @@
+[submodule "submodules/rust-decimal"]
+	path = submodules/rust-decimal
+	url = git@github.com:vgatherps/rust-decimal.git

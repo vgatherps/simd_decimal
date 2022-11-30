@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use rust_decimal::Decimal;
 use simd_decimal::*;
 
 // No point in having different integers since the algorithm does not branch
@@ -21,6 +22,17 @@ fn run_bench_for<const N: usize>(c: &mut Criterion) {
     c.bench_function(&format!("Raw parse batch of {}", N), |b| unsafe {
         let fnc = || {
             let rval = do_parse_many_decimals(black_box(real_input), black_box(&mut outputs));
+            for output in &outputs {
+                let output = black_box(output);
+                // This is actually at a slight disadvantage to the rust_decimal parser!
+                // The parser skips many of the checks
+                let rval = rust_decimal::handle_data::<false, true>(
+                    output.mantissa as u128,
+                    output.exponent,
+                )
+                .unwrap();
+                black_box(rval);
+            }
             assert!(rval);
         };
 
