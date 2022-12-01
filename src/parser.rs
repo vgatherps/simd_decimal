@@ -1,7 +1,7 @@
 use std::arch::x86_64::{
-    _mm_and_si128, _mm_cmpeq_epi8, _mm_cmpgt_epi8, _mm_cmplt_epi8, _mm_cvtsi128_si64,
-    _mm_madd_epi16, _mm_maddubs_epi16, _mm_movemask_epi8, _mm_packs_epi32, _mm_set1_epi8,
-    _mm_setr_epi16, _mm_setr_epi8, _mm_shuffle_epi8, _mm_sub_epi8, _mm_test_all_ones, _mm_tzcnt_32,
+    _mm_andnot_si128, _mm_cmpeq_epi8, _mm_cvtsi128_si64, _mm_madd_epi16, _mm_maddubs_epi16,
+    _mm_max_epu8, _mm_movemask_epi8, _mm_packs_epi32, _mm_set1_epi8, _mm_setr_epi16, _mm_setr_epi8,
+    _mm_shuffle_epi8, _mm_sub_epi8, _mm_test_all_ones, _mm_tzcnt_32,
 };
 
 use crate::tables::{DOT_SHUFFLE_CONTROL, LENGTH_SHIFT_CONTROL};
@@ -29,8 +29,6 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
 ) -> bool {
     let ascii = _mm_set1_epi8(b'0' as i8);
     let dot = _mm_set1_epi8((b'.').wrapping_sub(b'0') as i8);
-    let neg1 = _mm_set1_epi8(-1);
-    let ten = _mm_set1_epi8(10);
     let mut cleaned = [_mm_set1_epi8(0); N];
     let mut dot_idx = [0; N];
 
@@ -82,12 +80,17 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     // mix validation and exponent calculation as these are fully independent already
     // and don't overlap live register sets
     for i in 0..N {
-        let geq_zero = _mm_cmpgt_epi8(cleaned[i], neg1);
-        let leq_nine = _mm_cmplt_epi8(cleaned[i], ten);
+        // take the unsigned max of '9' and anything in the vector
+        // then check for equality to '9'
 
-        let is_valid = _mm_and_si128(geq_zero, leq_nine);
+        let nine = _mm_set1_epi8(9);
 
-        all_masks = _mm_and_si128(is_valid, all_masks);
+        let max_of_nine = _mm_max_epu8(nine, cleaned[i]);
+
+        // Sub can run on more ports than equality comparison
+        let remaining = _mm_sub_epi8(nine, max_of_nine);
+
+        all_masks = _mm_andnot_si128(remaining, all_masks);
 
         if !KNOWN_INTEGER {
             // Gets the decimals from end after shifting, will be -16 if there's no dot
