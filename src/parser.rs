@@ -204,4 +204,61 @@ mod test {
             }
         );
     }
+
+    #[test]
+    fn test_full_sized_integer() {
+        let data = b"1234567898765432";
+        let real_length = 16;
+        let input = ParseInput { data, real_length };
+        let mut output = [ParseOutput::default()];
+
+        let was_good = unsafe { do_parse_many_decimals::<1>(&[input], &mut output) };
+
+        assert!(was_good);
+        assert_eq!(
+            output[0],
+            ParseOutput {
+                exponent: 0,
+                mantissa: 1234567898765432
+            }
+        );
+    }
+
+    #[test]
+    fn test_max_integer() {
+        let data = b"9999999999999999";
+        let real_length = 16;
+        let input = ParseInput { data, real_length };
+        let mut output = [ParseOutput::default()];
+
+        let was_good = unsafe { do_parse_many_decimals::<1>(&[input], &mut output) };
+
+        assert!(was_good);
+        assert_eq!(
+            output[0],
+            ParseOutput {
+                exponent: 0,
+                mantissa: 9999999999999999
+            }
+        );
+    }
+
+    #[test]
+    fn test_min_decimal() {
+        let data = b".000000000000001";
+        let real_length = 16;
+        let input = ParseInput { data, real_length };
+        let mut output = [ParseOutput::default()];
+
+        let was_good = unsafe { do_parse_many_decimals::<1>(&[input], &mut output) };
+
+        assert!(was_good);
+        assert_eq!(
+            output[0],
+            ParseOutput {
+                exponent: 15,
+                mantissa: 1
+            }
+        );
+    }
 }
