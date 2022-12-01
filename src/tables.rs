@@ -11,7 +11,6 @@ pub(crate) union VecCharArray<const N: usize> {
 }
 
 // vector ops aren't const, so some union tricks to the rescue
-// so it's union tricks to the rescue
 pub(crate) const DOT_SHUFFLE_CONTROL: VecCharArray<33> = VecCharArray {
     chars: generate_dot_shuffle_control(),
 };
