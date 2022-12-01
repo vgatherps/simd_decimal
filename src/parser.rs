@@ -50,8 +50,10 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     // now, we convert the string from [1234.123 <garbage>] into [00000 ... 1234.123]
     // as well as insert zeros for everything past the end
 
+    // For known-short strings, replacing this with a shift might reduce
+    // contention on port 5 (the shuffle port). You can't do this for a full vector
+    // since there's no way to do so without an immediate value
     for i in 0..N {
-        // TODO test loading these in the prior loops as well
         let shift_mask = LENGTH_SHIFT_CONTROL
             .vecs
             .get_unchecked(inputs[i].real_length);
