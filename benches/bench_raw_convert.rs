@@ -134,8 +134,6 @@ criterion_group!(
     raw_parse_benches,
     run_float_bench_1,
     run_integer_bench_1,
-    run_float_bench_1,
-    run_integer_bench_1,
     run_float_bench_2,
     run_integer_bench_2,
     run_float_bench_4,
