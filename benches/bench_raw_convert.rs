@@ -1,17 +1,39 @@
-use std::str::FromStr;
-
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use rust_decimal::Decimal;
+use rust_decimal::{parse_str_radix_10, DecConverter};
 use simd_decimal::*;
 
 // No point in having different integers since the algorithm does not branch
 // or behave differently based on size
 const BASE: &[u8; 16] = b"987654321.123_..";
+const BASE_STR: &str = "987654321.123";
 
 const BASE_INPUT: ParseInput = ParseInput {
     data: BASE,
     real_length: 13,
 };
+
+// Put us and rust_decimal on the same playing field
+pub struct RawParsedDec {
+    pub value: u128,
+    pub scale: u8,
+}
+
+impl DecConverter for RawParsedDec {
+    type Output = RawParsedDec;
+    type Error = &'static str;
+
+    fn convert<const NEG: bool>(mantissa: u128, scale: u8) -> Result<Self::Output, Self::Error> {
+        Ok(Self {
+            value: mantissa,
+            scale,
+        })
+    }
+
+    #[inline]
+    fn tail_error(err: &'static str) -> Result<Self::Output, Self::Error> {
+        Err(err)
+    }
+}
 
 const MANY: [ParseInput; 16] = [BASE_INPUT; 16];
 
@@ -22,18 +44,8 @@ fn run_bench_for<const N: usize>(c: &mut Criterion) {
     c.bench_function(&format!("Raw parse batch of {}", N), |b| unsafe {
         let fnc = || {
             let rval = do_parse_many_decimals(black_box(real_input), black_box(&mut outputs));
-            for output in &outputs {
-                let output = black_box(output);
-                // This is actually at a slight disadvantage to the rust_decimal parser!
-                // The parser skips many of the checks
-                let rval = rust_decimal::handle_data::<false, true>(
-                    output.mantissa as u128,
-                    output.exponent,
-                )
-                .unwrap();
-                black_box(rval);
-            }
-            assert!(rval);
+            black_box(&outputs);
+            black_box(rval);
         };
 
         b.iter(fnc);
@@ -44,9 +56,7 @@ fn run_decimal_bench_for<const N: usize>(c: &mut Criterion) {
     c.bench_function(&format!("Decimal parse batch of {}", N), |b| {
         let fnc = || {
             for _ in 0..N {
-                let value = black_box(BASE);
-                let as_str = unsafe { std::str::from_utf8_unchecked(&value[..13]) };
-                black_box(rust_decimal::Decimal::from_str(as_str).unwrap());
+                black_box(parse_str_radix_10::<RawParsedDec>(BASE_STR).unwrap());
             }
         };
 
