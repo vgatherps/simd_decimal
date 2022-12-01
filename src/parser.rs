@@ -23,7 +23,7 @@ pub struct ParseOutput {
 /// # Safety
 ///
 /// It is unsafe to pass anything with a real_length that is greater than 16
-pub unsafe fn do_parse_many_decimals<const N: usize>(
+pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     inputs: &[ParseInput; N],
     outputs: &mut [ParseOutput; N],
 ) -> bool {
@@ -59,21 +59,21 @@ pub unsafe fn do_parse_many_decimals<const N: usize>(
         cleaned[i] = _mm_shuffle_epi8(cleaned[i], *shift_mask);
     }
 
-    for i in 0..N {
-        let is_eq_dot = _mm_cmpeq_epi8(cleaned[i], dot);
-        // if there's no dot, we automatically get 32, giving us a mask which does nothing
-        let is_dot_mask = _mm_movemask_epi8(is_eq_dot);
+    if !KNOWN_INTEGER {
+        for i in 0..N {
+            let is_eq_dot = _mm_cmpeq_epi8(cleaned[i], dot);
+            // if there's no dot, we automatically get 32, giving us a mask which does nothing
+            let is_dot_mask = _mm_movemask_epi8(is_eq_dot);
 
-        let local_dot_idx = _mm_tzcnt_32(is_dot_mask as u32);
+            let local_dot_idx = _mm_tzcnt_32(is_dot_mask as u32);
 
-        // TODO fill exponent of output, just some integer math on the input
+            let dot_control = DOT_SHUFFLE_CONTROL
+                .vecs
+                .get_unchecked(local_dot_idx as usize);
 
-        let dot_control = DOT_SHUFFLE_CONTROL
-            .vecs
-            .get_unchecked(local_dot_idx as usize);
-
-        cleaned[i] = _mm_shuffle_epi8(cleaned[i], *dot_control);
-        dot_idx[i] = local_dot_idx;
+            cleaned[i] = _mm_shuffle_epi8(cleaned[i], *dot_control);
+            dot_idx[i] = local_dot_idx;
+        }
     }
 
     let mut all_masks = _mm_set1_epi8(-1);
@@ -86,17 +86,22 @@ pub unsafe fn do_parse_many_decimals<const N: usize>(
         let is_valid = _mm_and_si128(geq_zero, leq_nine);
 
         all_masks = _mm_and_si128(is_valid, all_masks);
-        // Gets the decimals from end after shifting, will be -16 if there's no dot
-        let adjusted_dot_idx = 16 - dot_idx[i];
 
-        let exponent = adjusted_dot_idx - 1;
+        if !KNOWN_INTEGER {
+            // Gets the decimals from end after shifting, will be -16 if there's no dot
+            let adjusted_dot_idx = 16 - dot_idx[i];
 
-        let fixed_exponent = exponent.max(0);
+            let exponent = adjusted_dot_idx - 1;
 
-        // Unless there's no dot, the above will always be positive
-        // in which case it will be negative or zero (since length <= 16)
+            let fixed_exponent = exponent.max(0);
 
-        outputs[i].exponent = fixed_exponent as u8;
+            // Unless there's no dot, the above will always be positive
+            // in which case it will be negative or zero (since length <= 16)
+
+            outputs[i].exponent = fixed_exponent as u8;
+        } else {
+            outputs[i].exponent = 0;
+        }
     }
 
     let any_bad_ones = _mm_test_all_ones(all_masks);
@@ -155,8 +160,11 @@ pub unsafe fn do_parse_many_decimals<const N: usize>(
 
     for i in 0..N {
         let small_bottom = u32_pairs[i] >> 32;
-        let large_half = u32_pairs[i] as u32 as u64;
 
+        // I used to have some code here where you could statically specify
+        // there were less than 8 digits, but it had almost no performance impact
+
+        let large_half = u32_pairs[i] as u32 as u64;
         outputs[i].mantissa = 100000000 * large_half + small_bottom;
     }
 
@@ -174,7 +182,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { do_parse_many_decimals::<1>(&[input], &mut output) };
+        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -193,7 +201,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { do_parse_many_decimals::<1>(&[input], &mut output) };
+        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -212,7 +220,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { do_parse_many_decimals::<1>(&[input], &mut output) };
+        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -231,7 +239,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { do_parse_many_decimals::<1>(&[input], &mut output) };
+        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -250,7 +258,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { do_parse_many_decimals::<1>(&[input], &mut output) };
+        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
