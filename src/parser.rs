@@ -29,7 +29,7 @@ pub struct ParseOutput {
 /// # Safety
 ///
 /// It is unsafe to pass anything with a real_length that is greater than 16
-#[target_feature(enable = "sse4.2,bmi,bmi1,bmi2")]
+#[target_feature(enable = "sse4.2,bmi1,bmi2")]
 pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     inputs: &[ParseInput; N],
     outputs: &mut [ParseOutput; N],
@@ -38,6 +38,12 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     let dot = _mm_set1_epi8((b'.').wrapping_sub(b'0') as i8);
     let mut cleaned = [_mm_set1_epi8(0); N];
     let mut dot_idx = [0; N];
+
+    // PERF
+    // I did some expermients to hoist the dot-discovery code above the length shifting code,
+    // to try and remove a data dependency. This surprisingly really hurt performance,
+    // although in theory it should be a significant improvement as you remove a data dependency
+    // from the shift to the dot discovery...
 
     // This is done as a series of many loops to maximise the instant parallelism available to the
     // cpu. It's semantically identical but means the decoder doesn't have to churn through
