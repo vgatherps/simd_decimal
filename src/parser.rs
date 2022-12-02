@@ -4,7 +4,7 @@ use std::arch::x86_64::{
     _mm_shuffle_epi8, _mm_sub_epi8, _mm_test_all_ones, _mm_tzcnt_32,
 };
 
-use crate::tables::{DOT_SHUFFLE_CONTROL, LENGTH_SHIFT_CONTROL};
+use crate::tables::{DOT_SHUFFLE_CONTROL, EXPONENT_FROM_BITS, LENGTH_SHIFT_CONTROL};
 
 #[derive(Clone, Copy, Debug)]
 pub struct ParseInput<'a> {
@@ -75,11 +75,12 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     if !KNOWN_INTEGER {
         for i in 0..N {
             let is_eq_dot = _mm_cmpeq_epi8(cleaned[i], dot);
-            // if there's no dot, we automatically get 32, giving us a mask which does nothing
-            let is_dot_mask = _mm_movemask_epi8(is_eq_dot);
+            // Set the top 16 bits to 1 as an implicit dot
+            let is_dot_mask = _mm_movemask_epi8(is_eq_dot) as u32 | 0xffff_0000;
 
-            let local_dot_idx = _mm_tzcnt_32(is_dot_mask as u32);
+            let local_dot_idx = _mm_tzcnt_32(is_dot_mask) as u32;
 
+            outputs[i].exponent = EXPONENT_FROM_BITS[local_dot_idx as usize];
             let dot_control = DOT_SHUFFLE_CONTROL
                 .vecs
                 .get_unchecked(local_dot_idx as usize);
@@ -104,22 +105,6 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
         let remaining = _mm_sub_epi8(nine, max_of_nine);
 
         all_masks = _mm_andnot_si128(remaining, all_masks);
-
-        if !KNOWN_INTEGER {
-            // Gets the decimals from end after shifting, will be -16 if there's no dot
-            let adjusted_dot_idx = 16 - dot_idx[i];
-
-            let exponent = adjusted_dot_idx - 1;
-
-            let fixed_exponent = exponent.max(0);
-
-            // Unless there's no dot, the above will always be positive
-            // in which case it will be negative or zero (since length <= 16)
-
-            outputs[i].exponent = fixed_exponent as u8;
-        } else {
-            outputs[i].exponent = 0;
-        }
     }
 
     let any_bad_ones = _mm_test_all_ones(all_masks);

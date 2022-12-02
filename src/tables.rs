@@ -11,13 +11,16 @@ pub(crate) union VecCharArray<const N: usize> {
 }
 
 // vector ops aren't const, so some union tricks to the rescue
-pub(crate) const DOT_SHUFFLE_CONTROL: VecCharArray<33> = VecCharArray {
+pub(crate) const DOT_SHUFFLE_CONTROL: VecCharArray<17> = VecCharArray {
     chars: generate_dot_shuffle_control(),
 };
 
 pub(crate) const LENGTH_SHIFT_CONTROL: VecCharArray<17> = VecCharArray {
     chars: generate_length_shift_control(),
 };
+
+pub(crate) const EXPONENT_FROM_BITS: [u8; 17] =
+    [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 0];
 
 const fn generate_dot_for(dot: u8) -> [u8; 16] {
     // we're compressing everything towards the end
@@ -41,10 +44,10 @@ const fn generate_dot_for(dot: u8) -> [u8; 16] {
     data
 }
 
-const fn generate_dot_shuffle_control() -> [[u8; 16]; 33] {
-    let mut data = [[0; 16]; 33];
+const fn generate_dot_shuffle_control() -> [[u8; 16]; 17] {
+    let mut data = [[0; 16]; 17];
     let mut i = 0;
-    while i <= 32 {
+    while i <= 16 {
         data[i as usize] = generate_dot_for(i);
         i += 1;
     }
