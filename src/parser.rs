@@ -37,7 +37,6 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     let ascii = _mm_set1_epi8(b'0' as i8);
     let dot = _mm_set1_epi8((b'.').wrapping_sub(b'0') as i8);
     let mut cleaned = [_mm_set1_epi8(0); N];
-    let mut dot_idx = [0; N];
 
     // PERF
     // I did some expermients to hoist the dot-discovery code above the length shifting code,
@@ -78,15 +77,12 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
             // Set the top 16 bits to 1 as an implicit dot
             let is_dot_mask = _mm_movemask_epi8(is_eq_dot) as u32 | 0xffff_0000;
 
-            let local_dot_idx = _mm_tzcnt_32(is_dot_mask) as u32;
+            let dot_idx = _mm_tzcnt_32(is_dot_mask) as u32;
 
-            outputs[i].exponent = EXPONENT_FROM_BITS[local_dot_idx as usize];
-            let dot_control = DOT_SHUFFLE_CONTROL
-                .vecs
-                .get_unchecked(local_dot_idx as usize);
+            outputs[i].exponent = EXPONENT_FROM_BITS[dot_idx as usize];
+            let dot_control = DOT_SHUFFLE_CONTROL.vecs.get_unchecked(dot_idx as usize);
 
             cleaned[i] = _mm_shuffle_epi8(cleaned[i], *dot_control);
-            dot_idx[i] = local_dot_idx;
         }
     }
 
