@@ -89,13 +89,13 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     let mut all_masks = _mm_set1_epi8(-1);
     // mix validation and exponent calculation as these are fully independent already
     // and don't overlap live register sets
-    for i in 0..N {
+    for cl in &cleaned {
         // take the unsigned max of '9' and anything in the vector
         // then check for equality to '9'
 
         let nine = _mm_set1_epi8(9);
 
-        let max_of_nine = _mm_max_epu8(nine, cleaned[i]);
+        let max_of_nine = _mm_max_epu8(nine, *cl);
 
         // Sub can run on more ports than equality comparison
         let remaining = _mm_sub_epi8(nine, max_of_nine);
@@ -356,6 +356,7 @@ mod test {
     }
 
     #[test]
+    #[allow(clippy::octal_escapes)]
     fn test_zero_inside() {
         let data = b".9876\054321-----";
         let real_length = 10;
