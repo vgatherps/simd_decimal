@@ -5,7 +5,7 @@ use simd_decimal::*;
 // No point in having different integers since the algorithm does not branch
 // or behave differently based on size
 const BASE: &[u8; 16] = b"9876543211231_..";
-const BASE_STR: &str = "92323423";
+const BASE_STR: &str = "1234567812345678";
 
 const BASE_INPUT: ParseInput = ParseInput {
     data: BASE,
@@ -51,6 +51,7 @@ fn run_bench_for<const N: usize, const INT: bool>(c: &mut Criterion) {
                 );
                 black_box(&outputs);
                 black_box(rval);
+                assert!(rval);
             };
 
             b.iter(fnc);
@@ -62,7 +63,8 @@ fn run_decimal_bench_for<const N: usize>(c: &mut Criterion) {
     c.bench_function(&format!("Decimal parse batch of {}", N), |b| {
         let fnc = || {
             for _ in 0..N {
-                black_box(parse_str_radix_10::<RawParsedDec>(BASE_STR).unwrap());
+                let my_str = black_box(BASE_STR);
+                black_box(parse_str_radix_10::<RawParsedDec>(my_str).unwrap());
             }
         };
 
@@ -82,8 +84,16 @@ fn run_float_bench_4(c: &mut Criterion) {
     run_bench_for::<4, false>(c);
 }
 
+fn run_float_bench_6(c: &mut Criterion) {
+    run_bench_for::<6, false>(c);
+}
+
 fn run_float_bench_8(c: &mut Criterion) {
     run_bench_for::<8, false>(c);
+}
+
+fn run_float_bench_12(c: &mut Criterion) {
+    run_bench_for::<12, false>(c);
 }
 
 fn run_float_bench_16(c: &mut Criterion) {
@@ -122,8 +132,16 @@ fn run_integer_bench_4(c: &mut Criterion) {
     run_bench_for::<4, true>(c);
 }
 
+fn run_integer_bench_6(c: &mut Criterion) {
+    run_bench_for::<6, true>(c);
+}
+
 fn run_integer_bench_8(c: &mut Criterion) {
     run_bench_for::<8, true>(c);
+}
+
+fn run_integer_bench_12(c: &mut Criterion) {
+    run_bench_for::<12, true>(c);
 }
 
 fn run_integer_bench_16(c: &mut Criterion) {
@@ -138,8 +156,12 @@ criterion_group!(
     run_integer_bench_2,
     run_float_bench_4,
     run_integer_bench_4,
+    run_float_bench_6,
+    run_integer_bench_6,
     run_float_bench_8,
     run_integer_bench_8,
+    run_float_bench_12,
+    run_integer_bench_12,
     run_float_bench_16,
     run_integer_bench_16,
 );
