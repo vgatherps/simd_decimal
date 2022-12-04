@@ -29,7 +29,6 @@ pub struct ParseOutput {
 /// # Safety
 ///
 /// It is unsafe to pass anything with a real_length that is greater than 16
-#[target_feature(enable = "sse4.2,bmi1,bmi2")]
 pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     inputs: &[ParseInput; N],
     outputs: &mut [ParseOutput; N],
@@ -77,7 +76,7 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
             // Set the top 16 bits to 1 as an implicit dot
             let is_dot_mask = _mm_movemask_epi8(is_eq_dot) as u32 | 0xffff_0000;
 
-            let dot_idx = _mm_tzcnt_32(is_dot_mask) as u32;
+            let dot_idx = is_dot_mask.trailing_zeros();
 
             outputs[i].exponent = EXPONENT_FROM_BITS[dot_idx as usize];
             let dot_control = DOT_SHUFFLE_CONTROL.vecs.get_unchecked(dot_idx as usize);
@@ -87,8 +86,6 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     }
 
     let mut all_masks = _mm_set1_epi8(-1);
-    // mix validation and exponent calculation as these are fully independent already
-    // and don't overlap live register sets
     for cl in &cleaned {
         // take the unsigned max of '9' and anything in the vector
         // then check for equality to '9'
@@ -104,10 +101,6 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     }
 
     let any_bad_ones = _mm_test_all_ones(all_masks);
-
-    if any_bad_ones != 1 {
-        return false;
-    }
 
     // Now, all that we do is convert to an actual integer
 
@@ -167,204 +160,5 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
         outputs[i].mantissa = 100000000 * large_half + small_bottom;
     }
 
-    true
-}
-
-#[cfg(test)]
-mod test {
-
-    use super::*;
-
-    #[test]
-    fn test_zero() {
-        let data = [b'0'; 16];
-        for real_length in 1..16 {
-            let input = ParseInput {
-                data: &data,
-                real_length,
-            };
-            let mut output = [ParseOutput::default()];
-
-            let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
-
-            assert!(was_good);
-            assert_eq!(
-                output[0],
-                ParseOutput {
-                    exponent: 0,
-                    mantissa: 0
-                }
-            );
-        }
-    }
-
-    #[test]
-    fn test_a_big_decimal() {
-        let data = b"987654321.123_..";
-        let real_length = 13;
-        let input = ParseInput { data, real_length };
-        let mut output = [ParseOutput::default()];
-
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
-
-        assert!(was_good);
-        assert_eq!(
-            output[0],
-            ParseOutput {
-                exponent: 3,
-                mantissa: 987654321123
-            }
-        );
-    }
-
-    #[test]
-    fn test_a_big_integer() {
-        let data = b"987654321123_..9";
-        let real_length = 12;
-        let input = ParseInput { data, real_length };
-        let mut output = [ParseOutput::default()];
-
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
-
-        assert!(was_good);
-        assert_eq!(
-            output[0],
-            ParseOutput {
-                exponent: 0,
-                mantissa: 987654321123
-            }
-        );
-    }
-
-    #[test]
-    fn test_full_sized_integer() {
-        let data = b"1234567898765432";
-        let real_length = 16;
-        let input = ParseInput { data, real_length };
-        let mut output = [ParseOutput::default()];
-
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
-
-        assert!(was_good);
-        assert_eq!(
-            output[0],
-            ParseOutput {
-                exponent: 0,
-                mantissa: 1234567898765432
-            }
-        );
-    }
-
-    #[test]
-    fn test_max_integer() {
-        let data = b"9999999999999999";
-        let real_length = 16;
-        let input = ParseInput { data, real_length };
-        let mut output = [ParseOutput::default()];
-
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
-
-        assert!(was_good);
-        assert_eq!(
-            output[0],
-            ParseOutput {
-                exponent: 0,
-                mantissa: 9999999999999999
-            }
-        );
-    }
-
-    #[test]
-    fn test_min_decimal() {
-        let data = b".000000000000001";
-        let real_length = 16;
-        let input = ParseInput { data, real_length };
-        let mut output = [ParseOutput::default()];
-
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
-
-        assert!(was_good);
-        assert_eq!(
-            output[0],
-            ParseOutput {
-                exponent: 15,
-                mantissa: 1
-            }
-        );
-    }
-
-    #[test]
-    fn test_dot_at_end() {
-        let data = b"987654321.------";
-        let real_length = 10;
-        let input = ParseInput { data, real_length };
-        let mut output = [ParseOutput::default()];
-
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
-
-        assert!(was_good);
-        assert_eq!(
-            output[0],
-            ParseOutput {
-                exponent: 0,
-                mantissa: 987654321
-            }
-        );
-    }
-
-    #[test]
-    fn test_dot_at_start() {
-        let data = b".987654321------";
-        let real_length = 10;
-        let input = ParseInput { data, real_length };
-        let mut output = [ParseOutput::default()];
-
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
-
-        assert!(was_good);
-        assert_eq!(
-            output[0],
-            ParseOutput {
-                exponent: 9,
-                mantissa: 987654321
-            }
-        );
-    }
-
-    #[test]
-    fn test_multiple_dots() {
-        let data = b"..987654321-----";
-        let real_length = 4;
-        let input = ParseInput { data, real_length };
-        let mut output = [ParseOutput::default()];
-
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
-
-        assert!(!was_good);
-    }
-
-    #[test]
-    fn test_invalid_separator() {
-        let data = b".9876_54321-----";
-        let real_length = 10;
-        let input = ParseInput { data, real_length };
-        let mut output = [ParseOutput::default()];
-
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
-
-        assert!(!was_good);
-    }
-
-    #[test]
-    #[allow(clippy::octal_escapes)]
-    fn test_zero_inside() {
-        let data = b".9876\054321-----";
-        let real_length = 10;
-        let input = ParseInput { data, real_length };
-        let mut output = [ParseOutput::default()];
-
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
-
-        assert!(!was_good);
-    }
+    any_bad_ones == 1
 }

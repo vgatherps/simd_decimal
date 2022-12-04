@@ -3,10 +3,20 @@
 // take the compile-time cost of once-cell for something that
 // should just be initialized immediately
 
-use std::arch::x86_64::__m128i;
+#[cfg(target_arch = "aarch64")]
+mod vec {
+    use std::arch::aarch64::uint8x16_t;
+    pub type Vec = uint8x16_t;
+}
+
+#[cfg(target_arch = "sse4.2")]
+mod vec {
+    use std::arch::x86_64::__m128i;
+    pub type Vec = __m128i;
+}
 
 pub(crate) union VecCharArray<const N: usize> {
-    pub vecs: [__m128i; N],
+    pub vecs: [vec::Vec; N],
     chars: [[u8; 16]; N],
 }
 
