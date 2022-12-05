@@ -9,7 +9,7 @@ mod vec {
     pub type Vec = uint8x16_t;
 }
 
-#[cfg(target_arch = "sse4.2")]
+#[cfg(target_arch = "x86_64")]
 mod vec {
     use std::arch::x86_64::__m128i;
     pub type Vec = __m128i;

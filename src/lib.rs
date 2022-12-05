@@ -2,9 +2,9 @@
 #![feature(const_mut_refs)]
 #![feature(const_reverse)]
 
-#[cfg(target_feature = "sse4.2")]
+#[cfg(target_arch = "x86_64")]
 mod parser_sse;
-#[cfg(target_feature = "sse4.2")]
+#[cfg(target_arch = "x86_64")]
 pub use parser_sse::*;
 
 #[cfg(target_arch = "aarch64")]
