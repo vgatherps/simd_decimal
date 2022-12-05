@@ -106,8 +106,6 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
         }
 
         for i in 0..N {
-            // Here, we go for leading zeros and adjust. This is since arm DOES NOT have a trailing zeros
-            // adjustment, and fix since each mask is 4xd
             dot_idx[i] = exploded_dot_mask[i].trailing_zeros() / 4;
         }
 

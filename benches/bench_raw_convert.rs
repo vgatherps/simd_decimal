@@ -5,7 +5,7 @@ use simd_decimal::*;
 // No point in having different integers since the algorithm does not branch
 // or behave differently based on size
 const BASE: &[u8; 16] = b"9876543211231_..";
-const BASE_STR: &str = "1234567812345678";
+const BASE_STR: &str = "1234567890123456";
 
 const BASE_INPUT: ParseInput = ParseInput {
     data: BASE,
