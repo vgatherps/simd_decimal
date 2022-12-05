@@ -1,9 +1,9 @@
 use std::arch::aarch64::{
-    uint8x16_t, vaddvq_u64, vceqq_u8, vcgeq_u8, vdupq_n_u8, vget_high_u16, vget_high_u32,
-    vget_lane_u64, vget_low_u16, vget_low_u32, vget_low_u8, vgetq_lane_u64, vmlal_high_u8,
-    vmlal_n_u16, vmlal_n_u32, vmovl_u16, vmovl_u32, vmovl_u8, vorrq_u8, vqtbl1q_u8,
-    vreinterpret_u64_u8, vreinterpretq_u16_u8, vreinterpretq_u32_u8, vreinterpretq_u64_u8,
-    vreinterpretq_u8_u16, vreinterpretq_u8_u32, vreinterpretq_u8_u64, vshrn_n_u16, vsubq_u8,
+    uint8x16_t, vaddvq_u64, vceqq_u8, vcgeq_u8, vdupq_n_u8, vget_lane_u64, vget_low_u16,
+    vget_low_u32, vget_low_u8, vgetq_lane_u64, vmlal_high_n_u16, vmlal_high_n_u32, vmlal_high_u8,
+    vmovl_u16, vmovl_u32, vmovl_u8, vorrq_u8, vqtbl1q_u8, vreinterpret_u64_u8,
+    vreinterpretq_u16_u8, vreinterpretq_u32_u8, vreinterpretq_u64_u8, vreinterpretq_u8_u16,
+    vreinterpretq_u8_u32, vreinterpretq_u8_u64, vshrn_n_u16, vsubq_u8,
 };
 
 use crate::tables::{DOT_SHUFFLE_CONTROL, EXPONENT_FROM_BITS, LENGTH_SHIFT_CONTROL};
@@ -24,16 +24,13 @@ const fn b(idx: u8) -> u8 {
     1 + base_zero * 2
 }
 
+const fn rev_array<T, const N: usize>(mut arr: [T; N]) -> [T; N] {
+    arr.reverse();
+    arr
+}
+
 const SHUFFLE_ACC: VecArr = VecArr {
-    char: [
-        b(1),
-        b(5),
-        b(3),
-        b(7),
-        b(2),
-        b(6),
-        b(4),
-        b(8),
+    char: rev_array([
         a(1),
         a(5),
         a(3),
@@ -42,7 +39,15 @@ const SHUFFLE_ACC: VecArr = VecArr {
         a(6),
         a(4),
         a(8),
-    ],
+        b(1),
+        b(5),
+        b(3),
+        b(7),
+        b(2),
+        b(6),
+        b(4),
+        b(8),
+    ]),
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -192,8 +197,8 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
 
     // To make things more confusing, arm does this
     // with fewer instructions if we swap high and low.
-    // So the vector mask is actually switched
-    // for the first round to save an instruction
+    // So the vector mask is actually reversed to the above
+    // but no other details change
 
     let acc_shuffle = SHUFFLE_ACC.vec;
     for cl in &mut cleaned {
@@ -218,15 +223,15 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
 
     for cl in &mut cleaned {
         let as_16 = vreinterpretq_u16_u8(*cl);
-        let small = vmovl_u16(vget_high_u16(as_16));
-        let acc = vmlal_n_u16(small, vget_low_u16(as_16), 1_00);
+        let small = vmovl_u16(vget_low_u16(as_16));
+        let acc = vmlal_high_n_u16(small, as_16, 1_00);
         *cl = vreinterpretq_u8_u32(acc);
     }
 
     for cl in &mut cleaned {
         let as_32 = vreinterpretq_u32_u8(*cl);
-        let small = vmovl_u32(vget_high_u32(as_32));
-        let acc = vmlal_n_u32(small, vget_low_u32(as_32), 1_00_00);
+        let small = vmovl_u32(vget_low_u32(as_32));
+        let acc = vmlal_high_n_u32(small, as_32, 1_00_00);
         *cl = vreinterpretq_u8_u64(acc);
     }
 
@@ -240,8 +245,8 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     // and perform in integer space?
     for i in 0..N {
         let as_32 = vreinterpretq_u32_u8(cleaned[i]);
-        let small = vmovl_u32(vget_high_u32(as_32));
-        let acc = vmlal_n_u32(small, vget_low_u32(as_32), 1_00_00_00_00);
+        let small = vmovl_u32(vget_low_u32(as_32));
+        let acc = vmlal_high_n_u32(small, as_32, 1_00_00_00_00);
         outputs[i].mantissa = vgetq_lane_u64(acc, 0);
     }
 

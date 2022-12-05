@@ -1,5 +1,6 @@
 #![feature(const_for)]
 #![feature(const_mut_refs)]
+#![feature(const_reverse)]
 
 #[cfg(target_feature = "sse4.2")]
 mod parser_sse;
