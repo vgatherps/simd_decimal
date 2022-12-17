@@ -1,7 +1,3 @@
-#![feature(const_for)]
-#![feature(const_mut_refs)]
-#![feature(const_reverse)]
-
 #[cfg(target_arch = "x86_64")]
 mod parser_sse;
 #[cfg(target_arch = "x86_64")]
@@ -29,7 +25,7 @@ mod test {
             };
             let mut output = [ParseOutput::default()];
 
-            let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
+            let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
 
             assert!(was_good);
             assert_eq!(
@@ -49,7 +45,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -68,7 +64,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -87,7 +83,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -106,7 +102,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -125,7 +121,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -144,7 +140,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -163,7 +159,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -182,7 +178,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(!was_good);
     }
@@ -194,7 +190,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(!was_good);
     }
@@ -207,7 +203,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { do_parse_many_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(!was_good);
     }

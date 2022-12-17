@@ -18,18 +18,12 @@ pub struct ParseOutput {
     pub exponent: u8,
 }
 
-// While plain sse gets most of the way there,
-// THis tends to have better perf with full 'native' instruction set
-// haven't bothered to go through asm and see what the difference is
-// probably some intrinsic getting outlined
-// It only seems to impact the integers benchmarks though
-
 /// Parses the inputs passed into (mantissa, exponent) pairs.
 /// If any of them detected invalid, returns false
 /// # Safety
 ///
 /// It is unsafe to pass anything with a real_length that is greater than 16
-pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
+pub unsafe fn parse_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     inputs: &[ParseInput; N],
     outputs: &mut [ParseOutput; N],
 ) -> bool {

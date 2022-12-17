@@ -45,10 +45,7 @@ fn run_bench_for<const N: usize, const INT: bool>(c: &mut Criterion) {
         &format!("Raw parse batch of {} int {}", N, INT),
         |b| unsafe {
             let fnc = || {
-                let rval = do_parse_many_decimals::<N, INT>(
-                    black_box(real_input),
-                    black_box(&mut outputs),
-                );
+                let rval = parse_decimals::<N, INT>(black_box(real_input), black_box(&mut outputs));
                 black_box(&outputs);
                 black_box(rval);
                 assert!(rval);

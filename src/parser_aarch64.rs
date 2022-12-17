@@ -1,17 +1,12 @@
 use std::arch::aarch64::{
-    uint8x16_t, vaddvq_u64, vceqq_u8, vcgeq_u8, vdupq_n_u8, vget_lane_u64, vget_low_u16,
-    vget_low_u32, vget_low_u8, vgetq_lane_u64, vmlal_high_n_u16, vmlal_high_n_u32, vmlal_high_u8,
-    vmovl_u16, vmovl_u32, vmovl_u8, vorrq_u8, vqtbl1q_u8, vreinterpret_u64_u8,
-    vreinterpretq_u16_u8, vreinterpretq_u32_u8, vreinterpretq_u64_u8, vreinterpretq_u8_u16,
-    vreinterpretq_u8_u32, vreinterpretq_u8_u64, vshrn_n_u16, vsubq_u8,
+    vaddvq_u64, vceqq_u8, vcgeq_u8, vdupq_n_u8, vget_lane_u64, vget_low_u16, vget_low_u32,
+    vget_low_u8, vgetq_lane_u64, vmlal_high_n_u16, vmlal_high_n_u32, vmlal_high_u8, vmovl_u16,
+    vmovl_u32, vmovl_u8, vorrq_u8, vqtbl1q_u8, vreinterpret_u64_u8, vreinterpretq_u16_u8,
+    vreinterpretq_u32_u8, vreinterpretq_u64_u8, vreinterpretq_u8_u16, vreinterpretq_u8_u32,
+    vreinterpretq_u8_u64, vshrn_n_u16, vsubq_u8,
 };
 
-use crate::tables::{DOT_SHUFFLE_CONTROL, EXPONENT_FROM_BITS, LENGTH_SHIFT_CONTROL};
-
-union VecArr {
-    vec: uint8x16_t,
-    char: [u8; 16],
-}
+use crate::tables::{VecCharArray, DOT_SHUFFLE_CONTROL, EXPONENT_FROM_BITS, LENGTH_SHIFT_CONTROL};
 
 // base_1 conversion back and forth
 const fn a(idx: u8) -> u8 {
@@ -24,30 +19,27 @@ const fn b(idx: u8) -> u8 {
     1 + base_zero * 2
 }
 
-const fn rev_array<T, const N: usize>(mut arr: [T; N]) -> [T; N] {
-    arr.reverse();
-    arr
-}
-
-const SHUFFLE_ACC: VecArr = VecArr {
-    char: rev_array([
-        a(1),
-        a(5),
-        a(3),
-        a(7),
-        a(2),
-        a(6),
-        a(4),
-        a(8),
-        b(1),
-        b(5),
-        b(3),
-        b(7),
-        b(2),
-        b(6),
-        b(4),
+// This is specified in reverse of the derivation because flipping the shuffle order
+// is faster
+const SHUFFLE_ACC: VecCharArray<1> = VecCharArray {
+    chars: [[
         b(8),
-    ]),
+        b(4),
+        b(6),
+        b(2),
+        b(7),
+        b(3),
+        b(5),
+        b(1),
+        a(8),
+        a(4),
+        a(6),
+        a(2),
+        a(7),
+        a(3),
+        a(5),
+        a(1),
+    ]],
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -69,7 +61,7 @@ pub struct ParseOutput {
 /// # Safety
 ///
 /// It is unsafe to pass anything with a real_length that is greater than 16
-pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
+pub unsafe fn parse_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     inputs: &[ParseInput; N],
     outputs: &mut [ParseOutput; N],
 ) -> bool {
@@ -198,7 +190,7 @@ pub unsafe fn do_parse_many_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     // So the vector mask is actually reversed to the above
     // but no other details change
 
-    let acc_shuffle = SHUFFLE_ACC.vec;
+    let acc_shuffle = SHUFFLE_ACC.vecs[0];
     for cl in &mut cleaned {
         *cl = vqtbl1q_u8(*cl, acc_shuffle);
     }
