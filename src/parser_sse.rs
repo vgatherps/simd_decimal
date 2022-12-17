@@ -5,24 +5,14 @@ use std::arch::x86_64::{
 };
 
 use crate::tables::{DOT_SHUFFLE_CONTROL, EXPONENT_FROM_BITS, LENGTH_SHIFT_CONTROL};
-
-#[derive(Clone, Copy, Debug)]
-pub struct ParseInput<'a> {
-    pub data: &'a [u8; 16],
-    pub real_length: usize,
-}
-
-#[derive(Debug, PartialEq, Eq, Default, Clone, Copy)]
-pub struct ParseOutput {
-    pub mantissa: u64,
-    pub exponent: u8,
-}
+use crate::{ParseInput, ParseOutput};
 
 /// Parses the inputs passed into (mantissa, exponent) pairs.
 /// If any of them detected invalid, returns false
 /// # Safety
 ///
 /// It is unsafe to pass anything with a real_length that is greater than 16
+#[inline]
 pub unsafe fn parse_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     inputs: &[ParseInput; N],
     outputs: &mut [ParseOutput; N],

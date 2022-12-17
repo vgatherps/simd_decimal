@@ -1,14 +1,35 @@
 #[cfg(target_arch = "x86_64")]
 mod parser_sse;
 #[cfg(target_arch = "x86_64")]
-pub use parser_sse::*;
+pub use parser_sse::parse_decimals;
 
 #[cfg(target_arch = "aarch64")]
 mod parser_aarch64;
 #[cfg(target_arch = "aarch64")]
-pub use parser_aarch64::*;
+pub use parser_aarch64::parse_decimals;
 
 mod tables;
+
+#[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
+#[inline]
+pub unsafe fn parse_decimals<const N: usize, const I: bool>(
+    _: &[ParseInput; N],
+    _: &mut [ParseOutput; N],
+) -> bool {
+    false
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ParseInput<'a> {
+    pub data: &'a [u8; 16],
+    pub real_length: usize,
+}
+
+#[derive(Debug, PartialEq, Eq, Default, Clone, Copy)]
+pub struct ParseOutput {
+    pub mantissa: u64,
+    pub exponent: u8,
+}
 
 #[cfg(test)]
 mod test {

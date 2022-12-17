@@ -7,6 +7,7 @@ use std::arch::aarch64::{
 };
 
 use crate::tables::{VecCharArray, DOT_SHUFFLE_CONTROL, EXPONENT_FROM_BITS, LENGTH_SHIFT_CONTROL};
+use crate::{ParseInput, ParseOutput};
 
 // base_1 conversion back and forth
 const fn a(idx: u8) -> u8 {
@@ -41,18 +42,6 @@ const SHUFFLE_ACC: VecCharArray<1> = VecCharArray {
         a(1),
     ]],
 };
-
-#[derive(Clone, Copy, Debug)]
-pub struct ParseInput<'a> {
-    pub data: &'a [u8; 16],
-    pub real_length: usize,
-}
-
-#[derive(Debug, PartialEq, Eq, Default, Clone, Copy)]
-pub struct ParseOutput {
-    pub mantissa: u64,
-    pub exponent: u8,
-}
 
 // aarch64 version of the sse parser. Most documentation is there.
 
