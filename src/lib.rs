@@ -9,12 +9,10 @@ use parser_sse::parse_decimals;
 #[cfg(target_arch = "aarch64")]
 mod parser_aarch64;
 #[cfg(target_arch = "aarch64")]
-use parser_aarch64::do_parse_decimals;
+pub use parser_aarch64::do_parse_decimals;
 
 mod tables;
 
-#[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
-#[inline]
 /// Parses the inputs passed into (mantissa, exponent) pairs.
 /// If any of them detected invalid, returns false
 ///
@@ -23,6 +21,8 @@ mod tables;
 /// # Safety
 ///
 /// It is unsafe to pass anything with a real_length that is greater than 16
+#[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
+#[inline]
 pub unsafe fn parse_decimals<const N: usize, const I: bool>(
     _: &[ParseInput; N],
     _: &mut [ParseOutput; N],
@@ -30,13 +30,7 @@ pub unsafe fn parse_decimals<const N: usize, const I: bool>(
     false
 }
 
-#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
-#[inline]
 /// Parses the inputs passed into (mantissa, exponent) pairs, and returns false if one is detected to be invalid
-///
-/// # Safety
-///
-/// It is unsafe to pass anything with a real_length that is greater than 16
 ///
 /// Examples:
 ///
@@ -58,11 +52,30 @@ pub unsafe fn parse_decimals<const N: usize, const I: bool>(
 /// );
 /// ```
 ///
-pub unsafe fn parse_decimals<const N: usize, const KNOWN_INTEGER: bool>(
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+#[inline]
+pub fn parse_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     inputs: &[ParseInput; N],
     outputs: &mut [ParseOutput; N],
 ) -> bool {
-    do_parse_decimals::<N, KNOWN_INTEGER>(inputs, outputs)
+    if inputs.iter().any(|i| i.real_length > 16) {
+        return false;
+    }
+    unsafe { parse_decimals_unchecked::<N, KNOWN_INTEGER>(inputs, outputs) }
+}
+
+/// Parses the inputs passed into (mantissa, exponent) pairs, and returns false if one is detected to be invalid
+///
+/// # Safety
+///
+/// It is unsafe to pass an input with real_length longer than 16
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+#[inline]
+pub unsafe fn parse_decimals_unchecked<const N: usize, const KNOWN_INTEGER: bool>(
+    inputs: &[ParseInput; N],
+    outputs: &mut [ParseOutput; N],
+) -> bool {
+    unsafe { do_parse_decimals::<N, KNOWN_INTEGER>(inputs, outputs) }
 }
 
 /// Struct containing descriptors of the input to be parsed.

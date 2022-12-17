@@ -41,19 +41,16 @@ fn run_bench_for<const N: usize, const INT: bool>(c: &mut Criterion) {
     let real_input: &[ParseInput; N] = (&MANY[..N]).try_into().unwrap();
     let mut outputs = [ParseOutput::default(); N];
 
-    c.bench_function(
-        &format!("Raw parse batch of {} int {}", N, INT),
-        |b| unsafe {
-            let fnc = || {
-                let rval = parse_decimals::<N, INT>(black_box(real_input), black_box(&mut outputs));
-                black_box(&outputs);
-                black_box(rval);
-                assert!(rval);
-            };
+    c.bench_function(&format!("Raw parse batch of {} int {}", N, INT), |b| {
+        let fnc = || {
+            let rval = parse_decimals::<N, INT>(black_box(real_input), black_box(&mut outputs));
+            black_box(&outputs);
+            black_box(rval);
+            assert!(rval);
+        };
 
-            b.iter(fnc);
-        },
-    );
+        b.iter(fnc);
+    });
 }
 
 fn run_decimal_bench_for<const N: usize>(c: &mut Criterion) {

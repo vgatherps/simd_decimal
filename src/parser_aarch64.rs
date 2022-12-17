@@ -50,7 +50,7 @@ const SHUFFLE_ACC: VecCharArray<1> = VecCharArray {
 /// # Safety
 ///
 /// It is unsafe to pass anything with a real_length that is greater than 16
-pub(crate) unsafe fn do_parse_decimals<const N: usize, const KNOWN_INTEGER: bool>(
+pub unsafe fn do_parse_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     inputs: &[ParseInput; N],
     outputs: &mut [ParseOutput; N],
 ) -> bool {
@@ -65,9 +65,11 @@ pub(crate) unsafe fn do_parse_decimals<const N: usize, const KNOWN_INTEGER: bool
     }
 
     for i in 0..N {
-        let shift_mask = LENGTH_SHIFT_CONTROL.vecs[inputs[i].real_length];
+        let shift_mask = LENGTH_SHIFT_CONTROL
+            .vecs
+            .get_unchecked(inputs[i].real_length);
 
-        cleaned[i] = vqtbl1q_u8(cleaned[i], shift_mask);
+        cleaned[i] = vqtbl1q_u8(cleaned[i], *shift_mask);
     }
 
     // https://community.arm.com/arm-community-blogs/b/infrastructure-solutions-blog/posts/porting-x86-vector-bitmask-optimizations-to-arm-neon

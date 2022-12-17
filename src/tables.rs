@@ -1,8 +1,3 @@
-// Static mut for the test to get around the fact that
-// intrinsics expression ARE NOT constexpr, and it's pointless to
-// take the compile-time cost of once-cell for something that
-// should just be initialized immediately
-
 #[cfg(target_arch = "aarch64")]
 mod vec {
     use std::arch::aarch64::uint8x16_t;
