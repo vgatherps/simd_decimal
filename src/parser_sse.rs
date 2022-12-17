@@ -13,7 +13,7 @@ use crate::{ParseInput, ParseOutput};
 ///
 /// It is unsafe to pass anything with a real_length that is greater than 16
 #[inline]
-pub unsafe fn parse_decimals<const N: usize, const KNOWN_INTEGER: bool>(
+pub unsafe fn do_parse_decimals<const N: usize, const KNOWN_INTEGER: bool>(
     inputs: &[ParseInput; N],
     outputs: &mut [ParseOutput; N],
 ) -> bool {

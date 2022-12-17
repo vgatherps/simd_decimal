@@ -1,17 +1,28 @@
+//! This crate provides vectorized decimal parsing functions for x86 and aarch64
+//! There is exactly one interface -
+
 #[cfg(target_arch = "x86_64")]
 mod parser_sse;
 #[cfg(target_arch = "x86_64")]
-pub use parser_sse::parse_decimals;
+use parser_sse::parse_decimals;
 
 #[cfg(target_arch = "aarch64")]
 mod parser_aarch64;
 #[cfg(target_arch = "aarch64")]
-pub use parser_aarch64::parse_decimals;
+use parser_aarch64::do_parse_decimals;
 
 mod tables;
 
 #[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
 #[inline]
+/// Parses the inputs passed into (mantissa, exponent) pairs.
+/// If any of them detected invalid, returns false
+///
+/// No doctests for this dummy wrapper since they'll fail on unsupported architectures
+///
+/// # Safety
+///
+/// It is unsafe to pass anything with a real_length that is greater than 16
 pub unsafe fn parse_decimals<const N: usize, const I: bool>(
     _: &[ParseInput; N],
     _: &mut [ParseOutput; N],
@@ -19,9 +30,54 @@ pub unsafe fn parse_decimals<const N: usize, const I: bool>(
     false
 }
 
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+#[inline]
+/// Parses the inputs passed into (mantissa, exponent) pairs, and returns false if one is detected to be invalid
+///
+/// # Safety
+///
+/// It is unsafe to pass anything with a real_length that is greater than 16
+///
+/// Examples:
+///
+/// ```
+/// let data = b"987654321.123_..";
+/// let real_length = 13;
+/// let input = ParseInput { data, real_length };
+/// let mut output = [ParseOutput::default()];
+///
+/// let was_good = unsafe { do_parse_decimals::<1, false>(&[input], &mut output) };
+///
+/// assert!(was_good);
+/// assert_eq!(
+///     output[0],
+///     ParseOutput {
+///         exponent: 3,
+///         mantissa: 987654321123
+///     }
+/// );
+/// ```
+///
+pub unsafe fn parse_decimals<const N: usize, const KNOWN_INTEGER: bool>(
+    inputs: &[ParseInput; N],
+    outputs: &mut [ParseOutput; N],
+) -> bool {
+    do_parse_decimals::<N, KNOWN_INTEGER>(inputs, outputs)
+}
+
+/// Struct containing descriptors of the input to be parsed.
+/// Specifically this contains a reference to 16 contiguous characters starting with the
+/// decimal itself that are valid to load, as well as the true number length
 #[derive(Clone, Copy, Debug)]
 pub struct ParseInput<'a> {
+    /// Reference to 16 contiguous bytes with the number starting from the least significant bytes
+    /// i.e. if the whole string was "12345.234, random junk bytes"
+    /// this would refer to "12345.234, rando"
     pub data: &'a [u8; 16],
+
+    /// This is the actual length of the decimal. In the above example,
+    /// with the 16 bytes being "12345.234, rando",
+    /// the real length is 9. &"12345.234, rando"[..9] = "12345.234"
     pub real_length: usize,
 }
 
@@ -46,7 +102,7 @@ mod test {
             };
             let mut output = [ParseOutput::default()];
 
-            let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
+            let was_good = unsafe { do_parse_decimals::<1, false>(&[input], &mut output) };
 
             assert!(was_good);
             assert_eq!(
@@ -66,7 +122,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { do_parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -85,7 +141,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { do_parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -104,7 +160,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { do_parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -123,7 +179,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { do_parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -142,7 +198,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { do_parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -161,7 +217,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { do_parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -180,7 +236,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { do_parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(was_good);
         assert_eq!(
@@ -199,7 +255,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { do_parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(!was_good);
     }
@@ -211,7 +267,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { do_parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(!was_good);
     }
@@ -224,7 +280,7 @@ mod test {
         let input = ParseInput { data, real_length };
         let mut output = [ParseOutput::default()];
 
-        let was_good = unsafe { parse_decimals::<1, false>(&[input], &mut output) };
+        let was_good = unsafe { do_parse_decimals::<1, false>(&[input], &mut output) };
 
         assert!(!was_good);
     }
